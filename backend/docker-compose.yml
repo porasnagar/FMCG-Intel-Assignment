@@ -1,0 +1,75 @@
+services:
+  api:
+    build: .
+    image: fmcg-backend:latest   # ← built once, shared by all services
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://fmcg_user:fmcg_password@db:5432/fmcg_db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    image: fmcg-backend:latest   # ← reuses the same built image
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://fmcg_user:fmcg_password@db:5432/fmcg_db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: celery -A app.core.celery_app worker --loglevel=info
+
+  beat:
+    image: fmcg-backend:latest   # ← reuses the same built image
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://fmcg_user:fmcg_password@db:5432/fmcg_db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: celery -A app.core.celery_app beat --loglevel=info
+
+  db:
+    image: ankane/pgvector:v0.5.1
+    environment:
+      - POSTGRES_USER=fmcg_user
+      - POSTGRES_PASSWORD=fmcg_password
+      - POSTGRES_DB=fmcg_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fmcg_user -d fmcg_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:

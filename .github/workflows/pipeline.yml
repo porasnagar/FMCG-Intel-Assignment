@@ -1,0 +1,44 @@
+name: FMCG Autonomous Pipeline
+
+on:
+  schedule:
+    # Runs every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    # Allow manual trigger from GitHub UI with optional reason
+    inputs:
+      reason:
+        description: 'Reason for manual trigger'
+        required: false
+        default: 'Manual run'
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Trigger FMCG Pipeline
+        run: |
+          echo "Triggering pipeline at $(date)..."
+          
+          RESPONSE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X POST "${{ secrets.RAILWAY_BACKEND_URL }}/api/pipeline/run" \
+            -H "X-Pipeline-Secret: ${{ secrets.PIPELINE_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 30)
+          
+          echo "HTTP Status: $RESPONSE"
+          echo "Response: $(cat /tmp/response.json)"
+          
+          if [ "$RESPONSE" != "200" ]; then
+            echo "Pipeline trigger failed with status $RESPONSE"
+            exit 1
+          fi
+          
+          echo "Pipeline started successfully!"
+
+      - name: Log Run
+        if: always()
+        run: |
+          echo "Pipeline trigger run at $(date) - Reason: ${{ github.event.inputs.reason || 'Scheduled cron' }}"

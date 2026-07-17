@@ -1,0 +1,55 @@
+name: Sync Backend → HF Space
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'          # only run when backend code changes
+
+jobs:
+  sync-to-hf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitHub repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Install HF CLI
+        run: pip install huggingface_hub
+
+      - name: Push backend/ to HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # Clone the HF Space repo
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+          git clone https://porasnagar:$HF_TOKEN@huggingface.co/spaces/porasnagar/benori hf_space
+
+          # Clear old contents (keep .git)
+          find hf_space -mindepth 1 -not -path 'hf_space/.git*' -delete
+
+          # Copy backend contents into the space root
+          cp -r backend/. hf_space/
+
+          # Remove Dockerfiles (HF Gradio SDK throws Configuration Error if it sees a Dockerfile)
+          rm -f hf_space/Dockerfile
+          rm -f hf_space/Dockerfile.hf
+          rm -f hf_space/docker-compose.yml   # not needed in HF Space
+          rm -f hf_space/.env                 # never commit secrets
+          rm -f hf_space/celerybeat-schedule
+
+          # Use the HF Space README (sets sdk: docker, port: 7860)
+          mv hf_space/hf_space_readme.md hf_space/README.md
+          
+          # Fix line endings (Hugging Face / pip can crash on Windows CRLF)
+          find hf_space -type f -exec sed -i 's/\r$//' {} +
+
+          # Commit and push to HF Space
+          cd hf_space
+          git add -A
+          git diff --staged --quiet || git commit -m "sync: from GitHub $(git -C .. rev-parse --short HEAD)"
+          git push

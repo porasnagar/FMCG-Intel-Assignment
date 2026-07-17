@@ -1,0 +1,19 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# .dockerignore — keep the build context lean
+# ──────────────────────────────────────────────────────────────────────────────
+.env
+.env.*
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.git
+.gitignore
+*.md
+tests/
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
