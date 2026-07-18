@@ -796,14 +796,10 @@ function NewsFeedPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetchNews({ search, category: filterCategory, country: filterCountry, verified_only: filterStatus === "Verified" })
+    fetchNews({ search, category: filterCategory, country: filterCountry, status: filterStatus })
       .then((data: any) => {
         const arr = Array.isArray(data) ? data : [];
-        if (filterStatus === "Rejected") {
-          setRawArticles(arr.filter((a: any) => a.verification_status === "Rejected"));
-        } else {
-          setRawArticles(arr);
-        }
+        setRawArticles(arr);
       })
       .catch(() => setRawArticles([]))
       .finally(() => setLoading(false));

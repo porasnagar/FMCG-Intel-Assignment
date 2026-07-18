@@ -37,7 +37,7 @@ export const fetchLiveFeed         = () => get("/api/dashboard/feed");
 // ─── News ────────────────────────────────────────────────────────────────────
 export const fetchNews = (params?: {
   search?: string; category?: string; country?: string;
-  verified_only?: boolean; skip?: number; limit?: number;
+  status?: string; skip?: number; limit?: number;
 }) => get("/api/news", params as Record<string, string | number | boolean>);
 
 // ─── Events ──────────────────────────────────────────────────────────────────
